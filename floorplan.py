@@ -13,6 +13,7 @@ many kinds of terrains/members:
     W (wall)
     S (safe zone)
     H (Hot)
+    M (Medinum)
 
 A square in the grid may be 
     0 or 1 of {N, F}
@@ -67,7 +68,7 @@ class FloorGUI:
       
         menu_def = [['File', ['Reset', 'Open', 'Save', 'Exit']],      
                     ['Options', ['Editing mode', 
-                                 ['Walls', 'Bottleneck', 'Danger', 'People', 'Hot'],]],
+                                 ['Walls', 'Bottleneck', 'Danger', 'People', 'Hot', 'Medinum'],]],
                     ['Help', '(NotImplemented) About...'], ]
         layout += [[sg.Menu(menu_def, tearoff=True)]]
         
@@ -75,21 +76,21 @@ class FloorGUI:
             '''
             short helper to create a button object with preset params
             '''
-            r = max(1, int(((R+C)/2)**.1))
-            a, b = R//2, C//2
+            #r = max(1, int(((R+C)/2)**.1))
+            #a, b = R//2, C//2
             if i == 0 or i == R-1 or j == 0 or j == C-1:
                 return sg.Button('S', button_color=('white', 'lightgreen'), 
                                  size=(1, 1), key=(i, j), pad=(0, 0))
-            elif i in range(a-r, a+r) and j in range(b-r, b+r):
-                return sg.Button('F', button_color=('white', 'red'), 
-                                 size=(1, 1), key=(i, j), pad=(0, 0))
+            #elif i in range(a-r, a+r) and j in range(b-r, b+r):
+            #    return sg.Button('F', button_color=('white', 'red'), 
+            #                     size=(1, 1), key=(i, j), pad=(0, 0))
             return sg.Button('N', button_color=('white', 'lightgrey'), size=(1, 1), 
                              key=(i, j), pad=(0, 0))
      
 
         button_layout = [[button(i, j) for j in range(C)] for i in range(R)]
-        button_column = sg.Column(button_layout, scrollable=True, size=(800, 600)) 
-        
+        button_column = sg.Column(button_layout, scrollable=True, size=(800, 600))
+
         #bottomrow = [
         #    sg.Button('mode: walls', button_color=('white', 'darkblue'), 
         #              size=(10, 1), key='mode'),
@@ -97,8 +98,10 @@ class FloorGUI:
         #        ]
         #
         layout += [[sg.Text('editing mode: {}'.format(mode), key='mode', size=(30, 1))],
-                   [sg.Slider(range=(0, 100), default_value=50, orientation='h', size=(10, 10), key='-SLIDER-')],
                    [button_column]]
+        #layout += [[sg.Text('editing mode: {}'.format(mode), key='mode', size=(30, 1))],
+        #           [sg.Slider(range=(0, 100), default_value=50, orientation='h', size=(10, 10), key='-SLIDER-')],
+        #           [button_column]]
 
         self.window = sg.Window('simulation floor layout designer', layout)
         return self.window
@@ -126,7 +129,7 @@ class FloorGUI:
         for i in range(R):
             for j in range(C):
                 attrs = grid[i][j]
-                graph[(i,j)].update({att:int(att in attrs) for att in 'WSBFNPH'})
+                graph[(i,j)].update({att:int(att in attrs) for att in 'WSBFNPHM'})
                 
                 for off in {-1, 1}:
                     if 0 <= i+off < R:
@@ -197,11 +200,11 @@ class FloorGUI:
         for loc, data in self.graph.items():
             square = window.Element(loc)
             attrs = {att for att in data if att is not 'nbrs' and data[att]}
-            attrs.intersection_update(set('WSFBNPH'))
+            attrs.intersection_update(set('WSFBNPHM'))
             if 'W' in attrs:
                 color = 'grey' if 'F' not in attrs else 'yellow'
             elif 'B' in attrs:
-                color = 'lightblue' if 'F' not in attrs else 'orange'
+                color = 'lightblue' if 'F' not in attrs else 'aquamarine'
             elif 'F' in attrs:
                 color = 'red'
             elif 'S' in attrs:
@@ -212,6 +215,8 @@ class FloorGUI:
                 color = 'lightgrey'
             elif 'H' in attrs:
                 color = 'pink'
+            elif 'M' in attrs:
+                color = 'orange'
             square.Update(','.join(reversed(sorted(attrs))), 
                           button_color=('white', color))
 
@@ -288,7 +293,7 @@ class FloorGUI:
                 else:
                     attrs.difference_update({'B', 'N'})
                     attrs.add('F')
-                    color = 'orange' if 'W' in attrs else 'red'
+                    color = 'aquamarine' if 'W' in attrs else 'red'
             
             #自行新增H
             elif mode == 'Hot':
@@ -304,6 +309,21 @@ class FloorGUI:
                     attrs.add('H')
                     attrs.discard('N')
                     color = 'pink' if 'F' not in attrs else 'aquamarine'
+            
+            #自行新增M
+            elif mode == 'Medinum':
+                if 'W' in attrs or 'B' in attrs:  # 檢查是否為牆壁或瓶頸
+                    print('Can\'t place "Medinum" in a wall or bottleneck!')
+                    return
+                elif 'M' in attrs:  # 如果已經是"M" 移除M改為N
+                    attrs.remove('M')
+                    if 'F' not in attrs:
+                        attrs.add('N')
+                    color = 'lightgrey' if 'F' not in attrs else 'red'
+                else:  # 新增 "Medinum"
+                    attrs.add('M')
+                    attrs.discard('N')
+                    color = 'orange' if 'F' not in attrs else 'aquamarine'
 
 
             square.Update(','.join(reversed(sorted(attrs))), 
@@ -315,7 +335,7 @@ class FloorGUI:
         elif event == 'Cancel':
             raise SystemExit
         
-        elif event in ['Walls', 'Bottleneck', 'Danger', 'People', 'Hot']:
+        elif event in ['Walls', 'Bottleneck', 'Danger', 'People', 'Hot', 'Medinum']:
             #global mode
             window.Element('mode').Update('editing mode: {}'.format(event))
             self.mode = event
