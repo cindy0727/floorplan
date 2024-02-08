@@ -1,7 +1,7 @@
 import random
 
 # 讀取文本文件
-with open('test.txt', 'r') as file:
+with open('floorplan.txt', 'r') as file:
     content = file.read()
 
 # 定義有幾趴的機率將N轉換成P
@@ -31,5 +31,5 @@ for char in content:
         new_content += char
 
 # 寫回文本文件
-with open('test1.txt', 'w') as file:
+with open('floorplan1.txt', 'w') as file:
     file.write(new_content)
