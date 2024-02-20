@@ -1,3 +1,13 @@
+## 疏散主程式
+### 執行指令
+- python run_evacuate.py
+
+### 目前內容
+- 圖片使用為twb.txt
+- 新增-w指令 可以輸入權重的值 預設是0
+- 註解很多print
+
+
 ## 專題平面圖
 ### 執行指令
 - python evacuate.py -o floorplan.txt 94 77
