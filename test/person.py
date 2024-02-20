@@ -29,6 +29,8 @@ class Person:
         self.rate = rate
         self.strategy = strategy
         self.loc = tuple(loc)
+        
+        #print('rate:', rate, 'strategy:', strategy,"\n")
 
     def move(self, nbrs, rv=None):
         '''

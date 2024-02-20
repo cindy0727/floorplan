@@ -10,6 +10,7 @@ class Plotter:
     def __init__(self):
         '''
         '''
+        plt.clf()
         plt.ion()
 
     def draw_grid(self, gdata):
@@ -35,7 +36,7 @@ class Plotter:
     def draw_people(self, x=[], y=[], c=[]):
         '''
         '''
-        #                               alive      ded    safe    unknown
+        #                              alive     ded        safe       unknown
         cmap = colors.ListedColormap(['blue', '#2b0000', 'darkgreen', 'yellow'])
         bounds = [-.5, .5, 1.5, 2.5, 3.5]
         norm = colors.BoundaryNorm(bounds, cmap.N)
@@ -92,8 +93,11 @@ class Plotter:
         plt.draw()
         plt.pause(delay)
         plt.clf()
+        
 
-
+    #加上關視窗的程式  
+    def close(self):
+        plt.close('all')
 
 
 for i in range(10):
@@ -113,6 +117,7 @@ for i in range(10):
 if __name__ == '__main__':
     grid = Plotter()
     grid.visualize()
+    grid.close()
 
     raise
     # create discrete colormap

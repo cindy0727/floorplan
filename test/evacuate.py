@@ -11,6 +11,7 @@ meaningfully callable to run a simulation experiment
 '''
 
 # stdlib imports
+from time import sleep
 import numpy
 import simulus
 import sys
@@ -27,6 +28,10 @@ except ImportError:
 from person import Person
 from bottleneck import Bottleneck
 from floorparse import FloorParser
+#畫圖
+import matplotlib.pyplot as plt
+
+from functools import lru_cache
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 
@@ -56,8 +61,8 @@ class FireSim:
                  rate_generator=lambda: abs(random.normalvariate(1, .5)),
                  person_mover=random.uniform, fire_mover=random.sample,
                  fire_rate=2, bottleneck_delay=1, animation_delay=.1,
-                 verbose=False,
-                 **kwargs):
+                 verbose=False,b=.1,
+                 **kwargs,):
         
         '''
         constructor method
@@ -65,7 +70,7 @@ class FireSim:
         graph (dict): a representation of the floor plan as per our
                       specification
         n (int): number of people in the simulation
-        '''
+        '''     
         self.sim = simulus.simulator()
         self.parser = FloorParser() 
         self.animation_delay = animation_delay
@@ -82,6 +87,7 @@ class FireSim:
         self.fire_rate = fire_rate
         self.bottleneck_delay = bottleneck_delay
         self.kwargs = kwargs
+        self.b = b
 
         self.setup()
 
@@ -108,7 +114,6 @@ class FireSim:
                 if node['W'] or node['F']: 
                     continue
                 if node[target]:
-                    #print(pos, last_loc, "\n")
                     if target=='S':
                         return dist,last_loc
                     else:
@@ -126,6 +131,7 @@ class FireSim:
             graph[loc]['distF'] = bfs('F', loc)
             graph[loc]['distS'], graph[loc]['door'] = bfs('S', loc)
             graph[loc]['density'] = 0
+        
         #計算人口密度
         for loc in graph:
             if graph[loc]['P']:
@@ -139,21 +145,23 @@ class FireSim:
                 graph[loc]['dist_weight'] = float('inf')
                 
             if graph[loc]['door'] != (-1, -1):
-                graph[loc]['dist_weight'] = graph[loc]['distS'] + 5 * graph[graph[loc]['door']]['density']
-        #更新每個點的距離
+                graph[loc]['dist_weight'] = graph[loc]['distS'] + self.b * graph[graph[loc]['door']]['density']
+        
+        #更新每個點的距離使得每個點的距離和最小鄰居的值只會差1
         for loc in graph:
             for loc in graph:
                 if graph[loc]['S'] or graph[loc]['W'] or graph[loc]['F'] or graph[loc]['density'] != 0:
                   continue
                 min_dist=float('inf')
                 for n in graph[loc]['nbrs']:
-                    if min_dist > graph[n]['dist_weight'] and graph[n]['S'] == 0:
+                    if min_dist > graph[n]['dist_weight'] and graph[n]['S']==0:
                         min_dist = graph[n]['dist_weight']
                         graph[loc]['door'] = graph[n]['door']
                         graph[loc]['dist_weight'] = min_dist + 1
 
+
         self.graph = dict(graph.items())
-        
+
         return self.graph
 
     
@@ -193,6 +201,7 @@ class FireSim:
 
         self.r, self.c = r+1, c+1
 
+        '''
         print(
               '='*79,
               'initialized a {}x{} floor with {} people in {} locations'.format(
@@ -201,9 +210,9 @@ class FireSim:
               'initialized {} bottleneck(s)'.format(len(self.bottlenecks)),
               'detected {} fire zone(s)'.format(len([loc for loc in self.graph
                                                      if self.graph[loc]['F']])),
-              '\ngood luck escaping!', '='*79, 'LOGS', sep='\n'
+              '\ngood luck escaping!', '='*79, 'LOGS', '\nb={}\n'.format(self.b),sep='\n',
              )
-
+        '''
 
     def visualize(self, t):
         '''
@@ -249,7 +258,7 @@ class FireSim:
         stopped moving (when all are dead or safe, not moving)
         '''
         if self.numsafe + self.numdead >= self.numpeople:
-            print('INFO:', 'people no longer moving, so stopping fire spread')
+            #print('INFO:', 'people no longer moving, so stopping fire spread')
             return
         if self.maxtime and self.sim.now >= self.maxtime:
             return
@@ -272,7 +281,7 @@ class FireSim:
         try:
             (choice, _) = self.fire_mover(no_fire_nbrs)
         except ValueError as e:
-            print('INFO:', 'fire is everywhere, so stopping fire spread')
+            #print('INFO:', 'fire is everywhere, so stopping fire spread')
             return
 
         self.graph[choice]['F'] = 1
@@ -312,6 +321,7 @@ class FireSim:
             self.exit_times += [p.exit_time]
             #self.avg_exit += p.exit_time
             self.avg_exit = p.exit_time
+            #print(self.sim.now, "\n")
             if self.verbose:
                 print('{:>6.2f}\tPerson {:>3} is now SAFE!'.format(self.sim.now, 
                                                                p.id))
@@ -352,6 +362,8 @@ class FireSim:
             self.visualize(t=self.animation_delay/len(self.people)/2)
 
         # self.sim.show_calendar()
+    
+
 
 
     def simulate(self, maxtime=None, spread_fire=False, gui=False):
@@ -388,6 +400,7 @@ class FireSim:
         '''
         computes and outputs useful stats about the simulation for nice output
         '''
+        '''
         print('\n\n', '='*79, sep='')
         print('STATS')
 
@@ -400,15 +413,35 @@ class FireSim:
         printstats('# people dead', self.numpeople-self.numsafe-self.nummoving)
         printstats('# people gravely injured', self.nummoving)
         print()
-        # printstats('total simulation time', '{:.3f}'.format(self.sim.now))
+        #printstats('total simulation time', '{:.3f}'.format(self.sim.now))
         if self.avg_exit:
-            printstats('average time to safe', '{:.3f}'.format(self.avg_exit))
+            printstats('time to safe', '{:.3f}'.format(self.avg_exit))
         else:
             printstats('average time to safe', 'NA')
         print()
+        '''
+        if self.avg_exit:
+            print('{:.3f}'.format(self.avg_exit))
+        else:
+            print('average time to safe', 'NA')
+        self.visualize(2)
 
-        # print(self.parser.tostr(self.graph))
-        self.visualize(4)
+        if self.plotter:
+            self.plotter.close()
+        self = None
+        #return self.avg_exit
+    
+def plot_points(x, y):
+
+    plt.plot(x, y)
+    plt.scatter(x, y, color='red')  # 绘制散点图
+
+    # 添加标题和坐标轴标签
+    plt.title('Plot of Points')
+    plt.xlabel('b')
+    plt.ylabel('time to safe')
+
+    plt.show()
 
 
 def main():
@@ -441,9 +474,11 @@ def main():
                         help='how long until the next person may leave the B')
     parser.add_argument('-a', '--animation_delay', type=float, default=1,
                         help='delay per frame of animated visualization (s)')
+    parser.add_argument('-w', '--weight', type=float, default=0,
+                        help='y=x+bw')
     args = parser.parse_args()
     # output them as a make-sure-this-is-what-you-meant
-    print('commandline arguments:', args, '\n')
+    #print('commandline arguments:', args, '\n')
 
     # set up random streams
     streams = [numpy.random.Generator(PCG64(args.random_state, i)) for i in range(4)]
@@ -453,15 +488,21 @@ def main():
     rate_generator = lambda: max(.1, abs(rate_strm.normal(1, .1))) # used to
                                                                    # decide
                                                                    # strategies
+    #strategy_generator = 0.5
+    #rate_generator = 5
     person_mover = lambda: pax_strm.uniform() #
     fire_mover = lambda a: fire_strm.choice(a) #
 
+    weight = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    time = [0,0,0,0,0,0,0,0,0,0,0]
     # create an instance of Floor
+    #for i in range(2):
+        #b = i/10
     floor = FireSim(args.input,
                     strategy_generator, rate_generator, person_mover,
                     fire_mover, fire_rate=args.fire_rate,
                     bottleneck_delay=args.bottleneck_delay,
-                    animation_delay=args.animation_delay, verbose=args.output)
+                    animation_delay=args.animation_delay, verbose=args.output, b=args.weight)
 
     # floor.visualize(t=5000)
     # call the simulate method to run the actual simulation
@@ -469,6 +510,9 @@ def main():
                    gui=not args.no_graphical_output)
 
     floor.stats()
+    del floor
+
+
 
 if __name__ == '__main__':
     main()
