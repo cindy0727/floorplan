@@ -91,33 +91,74 @@ class FireSim:
 
         self.setup()
 
+    def whichdoor(loc):
+        if loc == (42,1):
+            return 0
+        elif loc == (92,14):
+            return 1      
+        elif loc == (92,62):
+            return 2
+        elif loc == (39,75):
+            return 3
 
     def precompute(self):
         '''
         precompute stats on the graph, e.g. nearest safe zone, nearest fire
         '''
+  
         graph = self.graph
-
-        def bfs(target, pos):
+        
+        def bfs(target, pos, i):
+            def whichdoor(loc):
+                if loc == (42,1):
+                    return 0
+                elif loc == (92,14):
+                    return 1      
+                elif loc == (92,62):
+                    return 2
+                elif loc == (39,75):
+                    return 3
+                
+            distance = [0,0,0,0]
+            door = [(-1,-1),(-1,-1),(-1,-1),(-1,-1)]
+            
             if graph[pos]['W']: 
-                return float('inf'), (-1, -1)
-            q = [(pos, 0, (-1, -1))] #出錯再說
+                distance = [float('inf'),float('inf'),float('inf'),float('inf'),float('inf')]
+                return distance, door
+            
+            if graph[pos]['S']:
+                return distance, door
+            
+            q = [(pos, 0, (-1, -1))]
             visited = set()
+            i_count = 0
+            
             while q:
                 node, dist, last_loc = q.pop()
-                if node in visited: 
-                    continue
+                if node in visited: continue
                 visited.add(node)
-                
+
                 temp=node
                 node = graph[node]
-                if node['W'] or node['F']: 
-                    continue
-                if node[target]:
-                    if target=='S':
-                        return dist,last_loc
+                if node['W'] or node['F']: continue
+                
+                if node[target]: 
+                    if i_count == i:
+                        door[i_count] = last_loc
+                        distance[whichdoor(last_loc)] = dist  
+                        return distance,door
+                    
                     else:
-                        return dist
+                        door[i_count] = last_loc
+                        distance[whichdoor(last_loc)] = dist
+                        i_count +=1
+                        for n in node['nbrs']:
+                            if graph[n]['S']:
+                                visited.add(n)
+                        for n in graph[last_loc]['nbrs']:
+                            if graph[n]['S']:
+                                visited.add(n)   
+                        continue
                 
                 for n in node['nbrs']:
                     if n in visited: 
@@ -125,17 +166,21 @@ class FireSim:
                     q = [(n, dist+1, temp)] + q
 
             # unreachable
-            return float('inf'), last_loc
+            distance = [float('inf'),float('inf'),float('inf'),float('inf'),float('inf')]
+            return distance,door
+        
         
         for loc in graph:
-            graph[loc]['distF'] = bfs('F', loc)
-            graph[loc]['distS'], graph[loc]['door'] = bfs('S', loc)
+            graph[loc]['distF'] = bfs('F', loc, 3)
+            graph[loc]['distS'],graph[loc]['door'] = bfs('S', loc, 3)
+            #print(loc, "distS", graph[loc]['distS'], "door", graph[loc]['door'],"\n")
             graph[loc]['density'] = 0
-        
+  
+        '''
         #計算人口密度
         for loc in graph:
             if graph[loc]['P']:
-                graph[graph[loc]['door']]['density'] += 1
+                graph[graph[loc]['door'][0]]['density'] += 1
         
         #將距離加入權重
         for loc in graph:
@@ -158,7 +203,7 @@ class FireSim:
                         min_dist = graph[n]['dist_weight']
                         graph[loc]['door'] = graph[n]['door']
                         graph[loc]['dist_weight'] = min_dist + 1
-
+        '''               
 
         self.graph = dict(graph.items())
 
@@ -171,7 +216,8 @@ class FireSim:
         __init__, we can proceed to create instances of: people and bottlenecks
         '''
         self.precompute()
-
+        
+        
         av_locs = []
         av_locs_copy = []
         bottleneck_locs = []
@@ -370,6 +416,7 @@ class FireSim:
         '''
         sets up initial scheduling and calls the sim.run() method in simulus
         '''
+
         self.gui = gui
         if self.gui: 
             from viz import Plotter
@@ -424,7 +471,7 @@ class FireSim:
             print('{:.3f}'.format(self.avg_exit))
         else:
             print('average time to safe', 'NA')
-        self.visualize(2)
+        self.visualize(5)
 
         if self.plotter:
             self.plotter.close()
@@ -493,8 +540,8 @@ def main():
     person_mover = lambda: pax_strm.uniform() #
     fire_mover = lambda a: fire_strm.choice(a) #
 
-    weight = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-    time = [0,0,0,0,0,0,0,0,0,0,0]
+    #weight = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    #time = [0,0,0,0,0,0,0,0,0,0,0]
     # create an instance of Floor
     #for i in range(2):
         #b = i/10
